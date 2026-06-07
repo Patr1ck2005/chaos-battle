@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos Battle — 混乱大枪战</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- UI overlay (menus, lobby, room) -->
+    <div id="app">
+        <!-- Main Menu -->
+        <div id="screen-menu" class="screen active">
+            <h1 class="game-title">混乱大枪战</h1>
+            <p class="subtitle">Chaos Battle</p>
+            <div class="menu-buttons">
+                <button id="btn-single" class="btn-primary">单人练习</button>
+                <button id="btn-multi" class="btn-primary">多人联机</button>
+                <button id="btn-settings" class="btn-secondary">按键设置</button>
+            </div>
+            <div id="nickname-section" class="nickname-section">
+                <label>昵称：<input id="input-nickname" type="text" maxlength="12" value="Player"></label>
+            </div>
+        </div>
+
+        <!-- Lobby (room list) -->
+        <div id="screen-lobby" class="screen">
+            <h2>联机大厅</h2>
+            <div class="lobby-actions">
+                <input id="input-room-name" type="text" maxlength="20" placeholder="房间名称">
+                <button id="btn-create-room" class="btn-primary">创建房间</button>
+                <button id="btn-refresh-lobby" class="btn-secondary">刷新列表</button>
+            </div>
+            <div id="room-list" class="room-list"></div>
+            <button id="btn-back-to-menu" class="btn-secondary">返回主菜单</button>
+        </div>
+
+        <!-- Room waiting -->
+        <div id="screen-room" class="screen">
+            <h2 id="room-title">房间等待中...</h2>
+            <div id="room-players" class="player-list"></div>
+            <div id="room-settings-display" class="room-settings"></div>
+            <div class="room-actions">
+                <button id="btn-start-game" class="btn-primary" style="display:none">开始游戏</button>
+                <button id="btn-leave-room" class="btn-secondary">离开房间</button>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div id="screen-settings" class="screen">
+            <h2>按键设置</h2>
+            <div class="settings-form">
+                <div class="keybind-row"><label>向左移动</label> <input id="bind-left" type="text" maxlength="1" value="A"></div>
+                <div class="keybind-row"><label>向右移动</label> <input id="bind-right" type="text" maxlength="1" value="D"></div>
+                <div class="keybind-row"><label>向上/跳跃</label> <input id="bind-up" type="text" maxlength="1" value="W"></div>
+                <div class="keybind-row"><label>向下</label> <input id="bind-down" type="text" maxlength="1" value="S"></div>
+                <div class="keybind-row"><label>普通攻击</label> <input id="bind-attack" type="text" maxlength="1" value="J"></div>
+                <div class="keybind-row"><label>特殊攻击</label> <input id="bind-special" type="text" maxlength="1" value="K"></div>
+                <div class="keybind-row"><label>换弹</label> <input id="bind-reload" type="text" maxlength="1" value="R"></div>
+            </div>
+            <button id="btn-save-settings" class="btn-primary">保存设置</button>
+            <button id="btn-back-settings" class="btn-secondary">返回主菜单</button>
+        </div>
+    </div>
+
+    <!-- Game Canvas (hidden initially) -->
+    <canvas id="game-canvas" style="display:none"></canvas>
+
+    <!-- HUD overlay (shown during game) -->
+    <div id="hud" style="display:none">
+        <div id="hud-status-panel" class="hud-panel">
+            <div class="hud-panel-title">状态</div>
+            <div id="hud-hp">
+                <div id="hud-hp-bar"></div>
+                <span id="hud-hp-text">100/100</span>
+            </div>
+            <div class="hud-stats">
+                <div id="hud-lives" class="hud-stat">
+                    <span class="hud-stat-label">生命</span>
+                    <span id="hud-lives-count" class="hud-stat-value">3</span>
+                </div>
+                <div id="hud-kills" class="hud-stat">
+                    <span class="hud-stat-label">击杀</span>
+                    <span id="hud-kills-count" class="hud-stat-value">0</span>
+                </div>
+            </div>
+        </div>
+        <div id="hud-weapon-panel" class="hud-panel">
+            <div class="hud-panel-title">武器</div>
+            <div id="hud-weapon">
+                <span id="hud-weapon-name">[1] 手枪</span>
+                <span id="hud-weapon-ammo">10/∞</span>
+            </div>
+            <div id="hud-special">
+                <!-- Weapon slots rendered dynamically -->
+            </div>
+        </div>
+        <div id="hud-killfeed"></div>
+    </div>
+
+    <!-- Game Over overlay -->
+    <div id="game-over-overlay" style="display:none">
+        <div id="game-over-box">
+            <h2 id="game-over-text">游戏结束</h2>
+            <p id="game-over-winner"></p>
+            <button id="btn-back-from-game" class="btn-primary">返回房间</button>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/network.js"></script>
+    <script src="/js/input.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/camera.js"></script>
+    <script src="/js/renderer.js"></script>
+    <script src="/js/game.js"></script>
+    <script src="/js/audio.js"></script>
+</body>
+</html>
