@@ -3,6 +3,7 @@
 import asyncio
 import json
 import pathlib
+import time
 import weakref
 
 import aiohttp
@@ -31,6 +32,8 @@ class GameServer:
         self.client_sockets: dict[str, aiohttp.web.WebSocketResponse] = {}
         self.game_loops: dict[str, asyncio.Task] = {}
         self.bot_controllers: dict[str, dict[str, BotController]] = {}
+        self.last_pong: dict[str, float] = {}  # client_id → last pong timestamp
+        self._heartbeat_task: asyncio.Task | None = None
 
     async def handle_ws(self, request: web.Request) -> web.WebSocketResponse:
         """Handle a WebSocket connection."""
@@ -57,6 +60,7 @@ class GameServer:
                         nickname = data.get("nickname", "Player")
                         self.clients[ws] = client_id
                         self.client_sockets[client_id] = ws
+                        self.last_pong[client_id] = time.time()
                         await ws.send_str(
                             make_message(
                                 MessageType.LOBBY_STATE,
@@ -178,6 +182,12 @@ class GameServer:
 
                     elif msg_type == MessageType.PING:
                         await ws.send_str(make_message(MessageType.PONG))
+                        if client_id:
+                            self.last_pong[client_id] = time.time()
+
+                    elif msg_type == MessageType.PONG:
+                        if client_id:
+                            self.last_pong[client_id] = time.time()
 
                     elif msg_type == MessageType.UPDATE_SETTINGS:
                         if not client_id:
@@ -212,6 +222,7 @@ class GameServer:
                 # Leave room (this also handles cleaning up room player list)
                 room = self.lobby.leave_room(client_id)
                 self.client_sockets.pop(client_id, None)
+                self.last_pong.pop(client_id, None)
                 if room:
                     await self._broadcast_room(room)
                     await self._broadcast_lobby()
@@ -365,6 +376,28 @@ class GameServer:
         return app
 
 
+    async def _run_heartbeat(self) -> None:
+        """Send PING to all clients every 5s; disconnect clients silent for 15s+."""
+        HEARTBEAT_INTERVAL = 5
+        HEARTBEAT_TIMEOUT = 15
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL)
+            now = time.time()
+            # Send PING to all connected clients
+            for ws, client_id in list(self.clients.items()):
+                try:
+                    await ws.send_str(make_message(MessageType.PING))
+                except Exception:
+                    pass
+            # Disconnect clients that haven't responded
+            for client_id, last in list(self.last_pong.items()):
+                if now - last > HEARTBEAT_TIMEOUT:
+                    ws = self.client_sockets.get(client_id)
+                    if ws is not None and not ws.closed:
+                        print(f"Heartbeat timeout for client {client_id}, disconnecting.")
+                        await ws.close()
+
+
 async def run_server() -> None:
     """Run the game server."""
     server = GameServer()
@@ -374,13 +407,22 @@ async def run_server() -> None:
     await runner.setup()
     site = web.TCPSite(runner, SERVER_HOST, SERVER_PORT)
 
-    print(f"Chaos Battle server running at http://{SERVER_HOST}:{SERVER_PORT}")
+    print(f"Chaos Battle server running at http://localhost:{SERVER_PORT}")
     print(f"Client files served from: {CLIENT_DIR}")
 
     await site.start()
+
+    # Start heartbeat task
+    heartbeat = asyncio.create_task(server._run_heartbeat())
 
     # Keep running
     try:
         await asyncio.Event().wait()
     except asyncio.CancelledError:
         pass
+    finally:
+        heartbeat.cancel()
+        try:
+            await heartbeat
+        except asyncio.CancelledError:
+            pass

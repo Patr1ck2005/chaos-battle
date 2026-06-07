@@ -462,23 +462,46 @@ class GameEngine:
 
     def _check_game_over(self) -> None:
         """Check if only one team (or fewer) remains with lives."""
+        if self.game_over:
+            return
+        if not self.players:
+            return
+
         players_with_lives = [p for p in self.players.values() if not p.is_out()]
         teams_with_lives = {p.team for p in players_with_lives}
-        if len(teams_with_lives) <= 1 and len(self.players) > 0:
-            # Don't end game if the last player is just respawning
-            actually_alive = [p for p in players_with_lives if p.is_alive()]
-            if len(actually_alive) == 0 and len(teams_with_lives) == 1:
-                return  # waiting for respawn
+
+        if len(teams_with_lives) > 1:
+            return  # multiple teams still have players
+
+        if len(teams_with_lives) == 0:
+            # everyone is out of lives — draw
             self.game_over = True
-            self.winner_id = players_with_lives[0].id if players_with_lives else None
+            self.winner_id = None
             self.events.append(
                 {
                     "type": "game_over",
-                    "winner_id": self.winner_id,
-                    "winner_team": players_with_lives[0].team if players_with_lives else None,
-                    "winner_name": players_with_lives[0].name if players_with_lives else "无人",
+                    "winner_id": None,
+                    "winner_team": None,
+                    "winner_name": "无人",
                 }
             )
+            return
+
+        # Exactly one team remains — wait if all its players are respawning
+        alive = [p for p in players_with_lives if p.is_alive()]
+        if not alive:
+            return
+
+        self.game_over = True
+        self.winner_id = alive[0].id
+        self.events.append(
+            {
+                "type": "game_over",
+                "winner_id": self.winner_id,
+                "winner_team": alive[0].team,
+                "winner_name": alive[0].name,
+            }
+        )
 
     # ── State Snapshot ──────────────────────────────────────
 

@@ -181,7 +181,7 @@ class Room:
             name=f"AI {bot_count + 1}",
             is_host=False,
             is_bot=True,
-            team="blue" if self.human_count else TEAMS[bot_count % len(TEAMS)],
+            team=TEAMS[self._bot_seq % len(TEAMS)],
             appearance=APPEARANCES[(bot_count + 1) % len(APPEARANCES)],
         )
         self.players.append(bot)

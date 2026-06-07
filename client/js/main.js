@@ -181,6 +181,10 @@ const App = {
                 alert('错误: ' + (msg.message || '未知错误'));
                 break;
 
+            case 'ping':
+                App.network.send({ type: 'pong' });
+                break;
+
             case 'pong':
                 break;
         }
